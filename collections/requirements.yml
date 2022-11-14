@@ -1,0 +1,29 @@
+---
+# A YAML list of collections we depend on, eg:
+# - name: community.general
+#   version: x.y.z  (optional)
+#   source: https://cloud.redhat.com/api/automation-hub (optional)
+
+collections:
+  - name: community.vmware
+    version: '>=2.10.0'
+  - name: ansible.netcommon
+    version: '>=4.0.0'
+  - name: cloud.common
+    version: '>=2.1.2'
+  - name: infoblox.nios_modules
+    version: '>=1.4.0'
+  - name: vmware.vmware_rest
+    version: '>=2.2.0'
+  - name: community.postgresql
+    version: '>=2.2.0'
+  - name: community.general
+    version: '>=5.8.0'
+  - name: ansible.controller
+    version: '>=4.2.1'
+  - name: redhat.satellite
+    version: '3.7.0'
+  - name: awx.awx
+    version: '21.8.0'
+  - name: f5networks.f5_bigip
+    version: '>=1.10.0'

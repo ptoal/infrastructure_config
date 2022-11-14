@@ -1,0 +1,9 @@
+---
+nios_provider:
+  host: 192.168.16.6
+  username: admin
+  password: "{{ infoblox_vm.password }}"
+  wapi_version: "2.2"
+ansible_connection: local
+ansible_host: 127.0.0.1
+ansible_python_interpreter: "/usr/bin/env python"

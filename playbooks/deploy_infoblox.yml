@@ -1,0 +1,134 @@
+---
+- name: Deploy Infoblox
+  hosts: localhost
+  vars:
+    library_name: "Appliance_Images"
+    appliance_name: "nios-8.5.2-409296-2021-01-08-00-32-30-ddi"
+
+  tasks:
+    - name: Check Infoblox VM
+      vmware.vmware_rest.vcenter_vm_info:
+        filter_names:
+          - "{{ infoblox_vm.name }}"
+      register: search_result
+
+    - name: Infoblox VM Info
+      vmware.vmware_rest.vcenter_vm_info:
+        vm: '{{ search_result.value[0].vm }}'
+      register: infoblox_vm_info
+      when: search_result.value|length > 0
+
+
+    - name: Provision Infoblox VM from OVF
+      block:
+        - name: Get Available Content Libraries
+          vmware.vmware_rest.content_locallibrary_info:
+          register: library_info
+
+        - name: Library ID
+          ansible.builtin.set_fact:
+            appliance_library_id: "{{ library_info.value | selectattr('name','eq', library_name) | map(attribute='id') | first }}"
+
+        - name: Get Appliance Info
+          vmware.vmware_rest.content_library_item_info:
+            library_id: "{{ appliance_library_id }}"
+          register: library_items
+
+        - name: Appliance ID
+          ansible.builtin.set_fact:
+            appliance_id: "{{ library_items.value | selectattr('name','eq', appliance_name) | map(attribute='id') | first }}"
+
+        - name: Get Library Item Info
+          vmware.vmware_rest.content_library_item_info:
+            library_item_id: "{{ appliance_id }}"
+          register: library_item_info
+
+        - name: Create VM from Library
+          vmware.vmware_rest.vcenter_ovf_libraryitem:
+            ovf_library_item_id: "{{ appliance_id }}"
+            target:
+              resource_pool_id: "{{ lookup('vmware.vmware_rest.resource_pool_moid', '/SagelyDC/host/HighPower/Demo') }}"
+              folder_id: "{{ lookup('vmware.vmware_rest.folder_moid', '/SagelyDC/vm/Demo') }}"
+            deployment_spec:
+              name: "{{ infoblox_vm.name }}"
+              accept_all_EULA: true
+              network_mappings:
+                "VM Network": "{{ lookup('vmware.vmware_rest.network_moid', '/SagelyDC/network/' + infoblox_vm.vm_network ) }}"
+              default_datastore_id: "{{ lookup('vmware.vmware_rest.datastore_moid', '/SagelyDC/datastore/' + infoblox_vm.datastore ) }}"
+              storage_provisioning: thin
+              additional_parameters:
+                - type: 'DeploymentOptionParams'
+                  selected_key: '825'
+                - type: PropertyParams
+                  properties:
+                    - id: 'temp_license'
+                      value: '{{ infoblox_vm.nios_license }}'
+                    - id: 'default_admin_password'
+                      value: '{{ infoblox_vm.password }}'
+                    - id: 'lan1-v4_addr'
+                      value: '{{ infojjjblox_vm.ipv4_addr }}'
+                    - id: 'lan1-v4_gw'
+                      value: '{{ infoblox_vm.ipv4_gw }}'
+                    - id: 'lan1-v4_netmask'
+                      value: '{{ infoblox_vm.ipv4_mask }}'
+                    - id: 'remote_console_enabled'
+                      value: 'y'
+                    - id: 'ntp_servers'
+                      value: "192.168.16.1"
+            state: deploy
+            session_timeout: 900
+          register: new_vm_info
+          async: 600
+          poll: 10
+      when: infoblox_vm_info.skipped | default(false)
+
+    - name: Infobox VM is running
+      vmware.vmware_rest.vcenter_vm_power:
+        state: start
+        vm: "{{ new_vm_info.value.resource_id.id | default(infoblox_vm_info.id) }}"
+
+- name: Provision Infoblox
+  hosts: blox1
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Network Configuration
+      infoblox.nios_modules.nios_network:
+        network: "{{ item.network }}"
+        comment: "{{ item.comment }}"
+        container: "{{ item.container | default(omit) }}"
+        options: "{{ item.options | default(omit) }}"
+        state: present
+        provider: "{{ nios_provider }}"
+      loop:
+        - network: "192.168.16.0/20"
+          comment: "Sandbox Network"
+          container: true
+        - network: "192.168.20.0/24"
+          comment: "Demo Pool"
+          options:
+            - name: domain-name
+              value: demo.sandbox.toal.ca
+
+    - name: Demo DNS Zone
+      infoblox.nios_modules.nios_zone:
+        name: demo.toal.ca
+        comment: Local Demo
+        state: present
+
+        provider: "{{ nios_provider }}"
+
+    - name: Restart Services if necessary
+      infoblox.nios_modules.nios_restartservices:
+        services:
+          - DHCP
+          - DNS
+        provider: "{{ nios_provider }}"
+
+    - name: Reminder
+      ansible.builtin.debug:
+        msg: |
+          You will need to manually log into the NIOS console and run the 'temp_license' command.
+          Additionally, you need to log into the Web UI at: https://{{ infoblox_vm.hostname }} to accept
+          the EULA.

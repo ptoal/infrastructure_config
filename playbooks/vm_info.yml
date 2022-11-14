@@ -1,0 +1,18 @@
+---
+- name: Get VM Info
+  hosts: localhost
+  connection: local
+
+  tasks:
+    - name: Look up VM
+      vmware.vmware_rest.vcenter_vm_info:
+        filter_names:
+          - rhel8-1
+      register: vm_search
+    - name: Collect VM Info
+      vmware.vmware_rest.vcenter_vm_info:
+        vm: '{{ vm_search.value[0].vm }}'
+      register: vm_info
+
+    - debug:
+        var: vm_info

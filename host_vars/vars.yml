@@ -1,0 +1,11 @@
+infoblox_vm:
+  name: infoblox1
+  nios_license: "nios IB-V825 dns dhcp"
+  hostname: blox1.sandbox.toal.ca
+  ipv4_addr: "192.168.16.6"
+  ipv4_gw: "192.168.16.1"
+  ipv4_mask: "255.255.128.0"
+  datacanter: "SagelyDC"
+  datastore: "EVO2TB"
+  vm_network: "DPG-Sandbox"
+  password: "Ori0n9"

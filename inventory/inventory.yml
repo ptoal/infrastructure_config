@@ -1,0 +1,10 @@
+---
+all:
+  children:
+    sensu_backends:
+      hosts:
+        sensu1:
+    eda_server:
+      hosts:
+        eda1:
+...

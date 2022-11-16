@@ -8,8 +8,8 @@
   vars:
     template_force: yes #overwrite existing template with the same name
     export_ovf: no # export the template to export domain upon creation
-    local_account_password: 'rhD3mo.905'
-    local_administrator_password: 'rhD3mo.905'
+    local_account_password: '{{ vault_local_account_password }}'
+    local_administrator_password: '{{ vault_local_administrator_password }}'
     distro_name: rhel8 # this needs to be one of the standard values see 'os_short_names' var
     template_vm_name: rhel81-x64-v1
     template_vm_guest_id: rhel8_64Guest

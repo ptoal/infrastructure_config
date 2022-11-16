@@ -1,0 +1,7 @@
+---
+# Sample configuration file for VMware Guest dynamic inventory
+plugin: community.vmware.vmware_vm_inventory
+strict: false
+validate_certs: false
+with_tags: true
+...

@@ -1,0 +1,108 @@
+---
+- name: Deploy Sensu VM
+  hosts: sensu_backends
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../vaults/template.yml
+
+  tasks:
+    - name: Create the VM
+      vmware_guest:
+        datacenter: 'SagelyDC'
+        folder: /vm/Demo
+        resource_pool: Demo
+        name: '{{ inventory_hostname }}'
+        state: poweredon
+        guest_id: rhel8_64Guest
+        annotation: "Sensu"
+        disk:
+          - size_gb: 40
+            type: thin
+            datastore: 'SSD2TB'
+        networks:
+          - name: DPG-Sandbox
+            ip: '{{ ip }}'
+            netmask: 255.255.240.0
+            gateway: 192.168.16.1
+            dns_servers:
+              - 192.168.16.1
+        hardware:
+          memory_mb: 16384
+          num_cpus: 4
+        customization:
+          dns_servers:
+            - 192.168.16.1
+          domain: demo.toal.ca
+          hostname: '{{ inventory_hostname }}'
+        template: 'rhel81-x64-v1'
+        wait_for_ip_address: true
+      delegate_to: localhost
+
+
+    - name: Wait for host to be up
+      ansible.builtin.wait_for_connection:
+
+    - name: Gather facts
+      ansible.builtin.gather_facts:
+
+    - name: Install backend
+      ansible.builtin.include_role:
+        name: sensu.sensu_go.backend
+      vars:
+        version: 6.0.0
+
+
+- name: Configure your first monitor
+  hosts: sensu_backends[0]
+  vars_files:
+    - ../vaults/template.yml
+
+  tasks:
+    - name: Change default admin password
+      sensu.sensu_go.user:
+        auth:
+          url: http://{{ ansible_host }}:8080
+        name: admin
+        password: '{{ vault_local_administrator_password }}'
+      delegate_to: localhost
+      ignore_errors: true
+
+    - name: Add subscriptions to agent entity
+      sensu.sensu_go.entity:
+        auth: &auth
+          url: http://{{ ansible_host }}:8080
+          password: '{{ vault_local_administrator_password }}'
+        name: '{{ item }}'
+        entity_class: agent
+        deregister: true
+        subscriptions:
+          - linux
+      delegate_to: localhost
+      loop:
+        - rhel8-1
+        - rhel8-2
+        - rhel8-3
+        - rhel8-4
+
+    - name: Create sensu asset
+      sensu.sensu_go.bonsai_asset:
+        auth: *auth
+        name: sensu/monitoring-plugins
+        version: 2.7.0
+      delegate_to: localhost
+
+    - name: Create sensu ntp check
+      sensu.sensu_go.check:
+        auth: *auth
+        name: ntp
+        runtime_assets: sensu/monitoring-plugins
+        command: check_ntp_time -H time.nist.gov --warn 0.5 --critical 1.0
+        output_metric_format: nagios_perfdata
+        publish: true
+        interval: 30
+        timeout: 10
+        subscriptions:
+          - linux
+      delegate_to: localhost
+...

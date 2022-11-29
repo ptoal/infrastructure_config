@@ -1,0 +1,52 @@
+---
+- name: Deploy F5 Load Balancer
+  hosts: lb1
+  gather_facts: false
+  vars:
+    library_name: "Appliance Images"
+    appliance_name: "BIGIP-17.0.0.1-0.0.4.ALL-vmware"
+
+  tasks:
+
+    - name: Look up Appliance Info
+      ansible.builtin.include_tasks:
+        file: ovf_location.yml
+
+    - block:
+      - name: VM Search
+        vmware.vmware_rest.vcenter_vm_info:
+          filter_names:
+            - "{{ inventory_hostname }}"
+        register: vm_search_result
+
+      - name: VM Info
+        vmware.vmware_rest.vcenter_vm_info:
+          vm: '{{ vm_search_result.value[0].vm }}'
+        register: this_vm_info
+        when: vm_search_result.value
+
+      - name: Create VM from Library
+        vmware.vmware_rest.vcenter_ovf_libraryitem:
+          ovf_library_item_id: "{{ appliance_id }}"
+          target:
+            resource_pool_id: "{{ lookup('vmware.vmware_rest.resource_pool_moid', '/SagelyDC/host/HighPower/Demo') }}"
+            folder_id: "{{ lookup('vmware.vmware_rest.folder_moid', '/SagelyDC/vm/Demo') }}"
+          deployment_spec:
+            name: "{{ inventory_hostname }}"
+            accept_all_EULA: true
+            network_mappings:
+              "Management": "{{ lookup('vmware.vmware_rest.network_moid', '/SagelyDC/network/DPG-Sandbox') }}"
+            default_datastore_id: "{{ lookup('vmware.vmware_rest.datastore_moid', '/SagelyDC/datastore/EVO2TB' ) }}"
+            storage_provisioning: thin
+            additional_parameters:
+              - type: 'DeploymentOptionParams'
+                selected_key: 'singlecpu'
+          state: deploy
+          session_timeout: 900
+        register: new_vm_info
+        async: 600
+        poll: 10
+        delegate_to: localhost
+        when: this_vm_info is skipped
+
+      delegate_to: localhost

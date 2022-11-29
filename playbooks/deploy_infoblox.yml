@@ -2,7 +2,7 @@
 - name: Deploy Infoblox
   hosts: localhost
   vars:
-    library_name: "Appliance_Images"
+    library_name: "Appliance Images"
     appliance_name: "nios-8.5.2-409296-2021-01-08-00-32-30-ddi"
 
   tasks:
@@ -21,27 +21,9 @@
 
     - name: Provision Infoblox VM from OVF
       block:
-        - name: Get Available Content Libraries
-          vmware.vmware_rest.content_locallibrary_info:
-          register: library_info
-
-        - name: Library ID
-          ansible.builtin.set_fact:
-            appliance_library_id: "{{ library_info.value | selectattr('name','eq', library_name) | map(attribute='id') | first }}"
-
-        - name: Get Appliance Info
-          vmware.vmware_rest.content_library_item_info:
-            library_id: "{{ appliance_library_id }}"
-          register: library_items
-
-        - name: Appliance ID
-          ansible.builtin.set_fact:
-            appliance_id: "{{ library_items.value | selectattr('name','eq', appliance_name) | map(attribute='id') | first }}"
-
-        - name: Get Library Item Info
-          vmware.vmware_rest.content_library_item_info:
-            library_item_id: "{{ appliance_id }}"
-          register: library_item_info
+        - name: Look up Apliance info
+          ansible.builtin.include_tasks:
+            file: ovf_location.yml
 
         - name: Create VM from Library
           vmware.vmware_rest.vcenter_ovf_libraryitem:

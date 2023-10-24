@@ -1,0 +1,4 @@
+---
+- name: Restart IIS on Win2k19
+  hosts: win2k19
+  tasks:

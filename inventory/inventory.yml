@@ -6,7 +6,7 @@ all:
         sensu1:
     eda_server:
       hosts:
-        eda1:
+        eda-test:
     infoblox:
       hosts:
         blox1:

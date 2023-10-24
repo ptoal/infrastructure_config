@@ -1,0 +1,5 @@
+---
+- name: Create new VM for Webapp
+  hosts: localhost
+  tasks:
+   - name: Create a new VM on vsphere

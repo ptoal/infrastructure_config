@@ -1,0 +1,6 @@
+---
+- name: Deploy a webserver on RHEL in vmware
+  hosts: localhost
+
+  tasks:
+    - name: Create a new VM in vcenter

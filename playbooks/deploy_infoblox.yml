@@ -72,7 +72,7 @@
 - name: Provision Infoblox
   hosts: blox1
   gather_facts: false
-  connection: local
+   connection: local
 
   tasks:
     - name: Network Configuration
